@@ -9,6 +9,7 @@ Trabajo Fin de Grado del Grado en Ingeniería Informática de la [Universitat Ob
 Área de Administración de Redes y Sistemas Operativos, curso 2026/2027.
 
 **Autor:** Alejandro Jesús Natera Ortiz
+
 **Tutora:** Laura Pacheco Mees
 
 ## Contenido

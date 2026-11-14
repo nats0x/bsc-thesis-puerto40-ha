@@ -20,7 +20,7 @@ Configuraciones del laboratorio descrito en la memoria, sin contraseñas ni dire
 |---|---|
 | `cml/` | Configuración de los seis switches IOL-L2 y cloud-init de RAD01 y RAD02 |
 | `oracle/` | Reglas de udev, límites de `grid` y fichero de respuestas de Grid Infrastructure |
-| `proxmox/` | Extracto de las redes del host |
+| `proxmox/` | Extracto de las redes del host y de los discos compartidos de ASM |
 
 La instalación paso a paso está en el anexo C de la memoria.
 

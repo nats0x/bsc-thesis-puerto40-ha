@@ -1,0 +1,122 @@
+#cloud-config
+hostname: rad02
+fqdn: rad02.tfg.local
+manage_etc_hosts: true
+timezone: Europe/Madrid
+users:
+  - name: admlab
+    groups: [sudo]
+    shell: /bin/bash
+    lock_passwd: false
+chpasswd:
+  expire: false
+  users:
+    - {name: admlab, password: "********", type: text}
+ssh_pwauth: true
+package_update: true
+packages: [chrony, freeradius, freeradius-ldap, freeradius-utils, ldap-utils, smbclient]
+write_files:
+  - path: /etc/chrony/sources.d/tfg.sources
+    defer: true
+    content: |
+      server 10.40.10.23 iburst
+      server 10.40.10.24 iburst
+  - path: /etc/freeradius/3.0/mods-available/ldap
+    defer: true
+    owner: root:freerad
+    permissions: "0640"
+    content: |
+      ldap {
+          server = "ldaps://ws-dc01.tfg.local:636"
+          server = "ldaps://ws-dc02.tfg.local:636"
+          identity = "CN=svc-radius,CN=Users,DC=tfg,DC=local"
+          password = '********'
+          base_dn = "DC=tfg,DC=local"
+          user {
+              base_dn = "${..base_dn}"
+              filter = "(&(sAMAccountName=%{User-Name})(memberOf=CN=AdminRed,CN=Users,DC=tfg,DC=local))"
+          }
+          options {
+              chase_referrals = no
+          }
+          tls {
+              ca_file = /etc/ssl/certs/ca-certificates.crt
+              require_cert = "demand"
+          }
+          pool {
+              start = 0
+              min = 0
+              max = 8
+              spare = 2
+              uses = 0
+              retry_delay = 5
+              lifetime = 0
+              idle_timeout = 60
+          }
+      }
+  - path: /etc/freeradius/3.0/sites-available/red
+    defer: true
+    owner: root:freerad
+    permissions: "0640"
+    content: |
+      server red {
+          listen {
+              type = auth
+              ipaddr = *
+              port = 1812
+          }
+          authorize {
+              ldap
+              if ((ok || updated) && User-Password) {
+                  update control {
+                      &Auth-Type := LDAP
+                  }
+              }
+          }
+          authenticate {
+              Auth-Type LDAP {
+                  ldap
+              }
+          }
+          post-auth {
+              update reply {
+                  &Cisco-AVPair := "shell:priv-lvl=15"
+              }
+              Post-Auth-Type REJECT {
+                  attr_filter.access_reject
+              }
+          }
+      }
+  - path: /etc/freeradius/3.0/clients.conf
+    defer: true
+    append: true
+    content: |
+      client switches {
+          ipaddr = 10.40.10.0/28
+          secret = ********
+          nas_type = cisco
+      }
+  - path: /usr/local/sbin/ca-tfg.sh
+    defer: true
+    owner: root:root
+    permissions: "0700"
+    content: |
+      #!/bin/bash
+      set -e
+      smbclient //ws-dc01.tfg.local/NETLOGON -U 'TFG\svc-radius%********' -c "get tfg-ca.cer /tmp/tfg-ca.cer"
+      openssl x509 -inform der -in /tmp/tfg-ca.cer -out /usr/local/share/ca-certificates/tfg-ca.crt 2>/dev/null \
+        || openssl x509 -in /tmp/tfg-ca.cer -out /usr/local/share/ca-certificates/tfg-ca.crt
+      update-ca-certificates
+      systemctl restart freeradius
+runcmd:
+  - sed -i "s/^pool /#pool /" /etc/chrony/chrony.conf
+  - systemctl restart chrony
+  - rm -f /etc/freeradius/3.0/sites-enabled/default /etc/freeradius/3.0/sites-enabled/inner-tunnel /etc/freeradius/3.0/mods-enabled/eap
+  - ln -sf ../sites-available/red /etc/freeradius/3.0/sites-enabled/red
+  - ln -sf ../mods-available/ldap /etc/freeradius/3.0/mods-enabled/ldap
+  - /usr/local/sbin/ca-tfg.sh || echo "Sin la CA del dominio, repetir /usr/local/sbin/ca-tfg.sh"
+  - systemctl enable freeradius
+  - systemctl restart freeradius
+  - ufw allow from 10.40.10.0/24 to any port 22 proto tcp
+  - ufw allow from 10.40.10.0/28 to any port 1812 proto udp
+  - ufw --force enable

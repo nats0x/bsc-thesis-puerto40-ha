@@ -1,0 +1,12 @@
+network:
+  version: 2
+  ethernets:
+    ens2:
+      dhcp4: false
+      addresses: [10.40.10.26/24]
+      routes:
+        - to: default
+          via: 10.40.10.1
+      nameservers:
+        addresses: [10.40.10.23, 10.40.10.24]
+        search: [tfg.local]

@@ -1,0 +1,88 @@
+auto vmbr1
+iface vmbr1 inet static
+    address 10.0.0.1/24
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+    post-up   iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o <interfaz pública> -j MASQUERADE
+    post-down iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o <interfaz pública> -j MASQUERADE
+auto vmbr10
+iface vmbr10 inet static
+    address 10.40.10.254/24
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+    post-up   ip route add 10.40.0.0/16 via 10.40.10.1
+    post-down ip route del 10.40.0.0/16 via 10.40.10.1
+    post-up   iptables -t nat -A POSTROUTING -s 10.40.0.0/16 -o <interfaz pública> -j MASQUERADE
+    post-down iptables -t nat -D POSTROUTING -s 10.40.0.0/16 -o <interfaz pública> -j MASQUERADE
+#VLAN 10 gestión
+auto vmbr110
+iface vmbr110 inet static
+    address 10.40.110.1/24
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+    post-up   sysctl -w net.ipv4.conf.vmbr110.forwarding=1
+    post-up   iptables -t nat -A POSTROUTING -s 10.40.110.0/24 -o <interfaz pública> -j MASQUERADE
+    post-down iptables -t nat -D POSTROUTING -s 10.40.110.0/24 -o <interfaz pública> -j MASQUERADE
+#Operador A
+auto vmbr2
+iface vmbr2 inet static
+    address 10.40.120.1/24
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+    post-up   sysctl -w net.ipv4.conf.vmbr2.forwarding=1
+    post-up   iptables -t nat -A POSTROUTING -s 10.40.120.0/24 -o <interfaz pública> -j MASQUERADE
+    post-down iptables -t nat -D POSTROUTING -s 10.40.120.0/24 -o <interfaz pública> -j MASQUERADE
+#Operador B
+
+auto vmbr20
+iface vmbr20 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+#VLAN 20 aplicación
+auto vmbr21
+iface vmbr21 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+#VLAN 21 base de datos
+auto vmbr30
+iface vmbr30 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+#VLAN 30 OT
+auto vmbr40
+iface vmbr40 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+#DMZ
+auto vmbr98
+iface vmbr98 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+#Sincronización CARP
+auto vmbr100
+iface vmbr100 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+#Trunk firewalls y cores
+auto vmbr200
+iface vmbr200 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+#Copias e iSCSI
+auto vmbr203
+iface vmbr203 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+#Interconexión RAC
